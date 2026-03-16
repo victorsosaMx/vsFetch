@@ -3,6 +3,9 @@
 A graphical system info viewer for Linux — inspired by `fastfetch`, built with Python + GTK3.
 Think of it as an "About This Computer" panel for your desktop.
 
+[![AUR version](https://img.shields.io/aur/version/vsfetch-git?label=AUR&logo=archlinux)](https://aur.archlinux.org/packages/vsfetch-git)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ![vsFetch screenshot](screenshots/1.png)
 
 ---
@@ -64,6 +67,19 @@ sudo dnf install python3-gobject gtk3 papirus-icon-theme
 ---
 
 ## Install
+
+### Arch Linux — AUR
+
+```bash
+yay -S vsfetch-git
+```
+
+Or manually with any AUR helper:
+```bash
+paru -S vsfetch-git
+```
+
+### Manual
 
 ```bash
 git clone https://github.com/victorsosaMx/vsFetch.git
