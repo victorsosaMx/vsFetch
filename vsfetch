@@ -1,0 +1,405 @@
+#!/usr/bin/env python3
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, GdkPixbuf, Gdk
+import subprocess, os, sys
+
+MINI    = "--mini"    in sys.argv
+VERSION = "--version" in sys.argv
+
+def run(cmd):
+    try:
+        return subprocess.check_output(cmd, shell=True, stderr=subprocess.DEVNULL).decode().strip()
+    except:
+        return "N/A"
+
+CSS = b"""
+* { font-family: "JetBrainsMono Nerd Font", "FiraCode Nerd Font", monospace; }
+window { background-color: #13131c; }
+.header { background-color: #181825; border-bottom: 1px solid #313244; }
+.logo-bg { background-color: #313244; border-radius: 12px; padding: 6px; }
+.distro  { color: #cdd6f4; font-size: 20px; font-weight: bold; }
+.fetched { color: #6c7086; font-size: 11px; }
+.section { color: #89b4fa; font-size: 11px; font-weight: bold; }
+.icon    { color: #89b4fa; font-size: 13px; }
+.key     { color: #89b4fa; font-size: 13px; }
+.val     { color: #cdd6f4; font-size: 13px; }
+.pct-ok  { color: #a6e3a1; font-size: 13px; }
+.pct-mid { color: #f9e2af; font-size: 13px; }
+.pct-hi  { color: #f38ba8; font-size: 13px; }
+separator { background-color: #313244; margin-top: 2px; margin-bottom: 2px; }
+"""
+
+def pct_class(pct_str):
+    try:
+        p = int(pct_str.strip('%'))
+        if p < 50: return "pct-ok"
+        if p < 80: return "pct-mid"
+        return "pct-hi"
+    except:
+        return "val"
+
+# ── data collectors ───────────────────────────────────────────────────────────
+
+def sys_info():
+    return [
+        ("󰌽", "Linux",   run("uname -o") + " " + run("uname -m")),
+        ("󰥔", "Fetched", run("date '+%Y-%m-%d %H:%M:%S %Z'")),
+        ("󰀲", "Locale",  os.environ.get("LANG", run("locale | grep LANG= | cut -d= -f2"))),
+    ]
+
+def hardware_info():
+    rows = []
+    rows.append(("󰍹", "Chassis", "Desktop"))
+
+    ram_total = run("free -h | awk '/^Mem:/{print $2}'")
+    ram_used  = run("free -h | awk '/^Mem:/{print $3}'")
+    ram_pct   = run("free | awk '/^Mem:/{printf \"%d%%\", $3/$2*100}'")
+    rows.append(("󰓅", "RAM", f"{ram_used} / {ram_total}", ram_pct))
+
+    swap = run("free -h | awk '/^Swap:/{print $2}'")
+    if swap in ("0B", "0", ""):
+        rows.append(("󰁡", "SWAP", "Disabled"))
+    else:
+        swap_used = run("free -h | awk '/^Swap:/{print $3}'")
+        rows.append(("󰁡", "SWAP", f"{swap_used} / {swap}"))
+
+    cpu = run("grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2").strip()
+    cores = run("nproc")
+    freq  = run("grep 'cpu MHz' /proc/cpuinfo | awk '{s+=$4;n++} END{printf \"%.2f GHz\", s/n/1000}'")
+    rows.append(("󰍛", "CPU", f"{cpu} ({cores}) @ {freq}"))
+
+    gpu = run("lspci | grep -i 'VGA compatible controller' | head -1 | sed 's/.*: //;s/ (rev.*//' | sed 's/Advanced Micro Devices, Inc. \[AMD.ATI\] //'")
+    rows.append(("󰍹", "GPU", f"{gpu} [Discrete]"))
+
+    disks = run("df -h --output=source,size,used,pcent,target -x tmpfs -x devtmpfs -x efivarfs | tail -n +2")
+    for line in disks.splitlines():
+        p = line.split()
+        if len(p) >= 5 and p[0].startswith('/dev/'):
+            fs = run(f"lsblk -no FSTYPE {p[0]} 2>/dev/null | head -1") or ""
+            rows.append(("󰋊", "Disk", f"{p[2]} / {p[1]}", p[3], f"— {fs}"))
+    return rows
+
+def desktop_info():
+    session = os.environ.get('XDG_SESSION_TYPE', 'wayland')
+    ver = run("hyprctl version 2>/dev/null | grep -oP 'v[0-9]+\\.[0-9]+\\.[0-9]+' | head -1")
+    label = f"Hyprland {ver} ({session.capitalize()})" if ver else os.environ.get('XDG_CURRENT_DESKTOP','')
+
+    # Active monitors only via JSON
+    try:
+        import json
+        raw = subprocess.check_output("hyprctl monitors -j", shell=True, stderr=subprocess.DEVNULL).decode()
+        monitors = json.loads(raw)
+        displays = "  ".join(f"{m['name']}: {m['width']}x{m['height']}@{round(m['refreshRate'])}Hz" for m in monitors)
+    except Exception:
+        displays = "N/A"
+
+    driver = run("lsmod | awk '/^amdgpu/{print \"amdgpu\"}' | head -1") or \
+             run("lsmod | awk '/^nvidia/{print \"nvidia\"}' | head -1") or "N/A"
+    return [
+        ("󰉼", "Session",  label),
+        ("󰍹", "Display",  displays),
+        ("󰍹", "G-Driver", driver),
+    ]
+
+def terminal_info():
+    shell = run("fish --version 2>/dev/null || $SHELL --version 2>/dev/null | head -1")
+    term  = run("kitty --version 2>/dev/null | head -1 | awk '{print $1\" \"$2}' || echo $TERM")
+    font  = run("grep -E '^font_family' ~/.config/kitty/kitty.conf 2>/dev/null | awk '{$1=\"\"; print $0}' | xargs") or "JetBrainsMono NF"
+    theme = run("gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null | tr -d \"'\" || echo 'Dark'")
+    pac   = run("pacman -Q 2>/dev/null | wc -l")
+    flat  = run("flatpak list 2>/dev/null | wc -l")
+    return [
+        ("󰈺", "Shell",     shell),
+        ("󰆍", "Terminal",  term),
+        ("󰛖", "Term Font", font.strip()),
+        ("󰏘", "Packages",  f"{pac} (pacman), {flat} (flatpak)"),
+    ]
+
+def dev_info():
+    tools = [
+        ("󱘗", "Rust",      run("rustc --version 2>/dev/null | awk '{print $2}'")),
+        ("󰙱", "Clang",     run("clang --version 2>/dev/null | grep -oP 'version [0-9.]+' | awk '{print $2}'")),
+        ("󰎙", "NodeJS",    run("node --version 2>/dev/null")),
+        ("󰟓", "Go",        run("go version 2>/dev/null | awk '{print $3}' | tr -d go")),
+        ("󰪳", ".NET",      run("dotnet --version 2>/dev/null")),
+        ("󰨞", "Editor",    run("code --version 2>/dev/null | head -1")),
+        ("󰊢", "Git",       run("git --version 2>/dev/null | awk '{print $3}'")),
+    ]
+    return [(ic, k, v) for ic, k, v in tools if v and v not in ("N/A", "")]
+
+def uptime_info():
+    upt   = run("uptime -p | sed 's/up //'")
+    login = run("who am i 2>/dev/null | awk '{print $1\"@\"$2, $3, $4}' | head -1") or \
+            run("echo $USER@$(tty | tr -d /dev/)")
+    age_ts = run("stat -c %Y /var/log/pacman.log 2>/dev/null | head -1")
+    if age_ts and age_ts != "N/A":
+        days   = run(f"echo $(( ( $(date +%s) - $(head -1 /var/log/pacman.log | grep -oP '[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}' | xargs -I{{}} date -d {{}} +%s 2>/dev/null || echo $(date +%s)) ) / 86400 ))")
+        age_dt = run("head -1 /var/log/pacman.log | grep -oP '[0-9]{4}-[0-9]{2}-[0-9]{2}'")
+        os_age = f"{age_dt} [{days} days]"
+    else:
+        os_age = "N/A"
+    return [
+        ("󰔟", "Uptime", upt),
+        ("󰀄", "Login",  login),
+        ("󰃰", "OS Age", os_age),
+    ]
+
+# ── window ────────────────────────────────────────────────────────────────────
+
+class AboutSystem(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="About This System")
+        self.set_default_size(700, 380 if MINI else 680)
+        self.set_resizable(False)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_wmclass("arch-about", "arch-about")
+        self.set_border_width(0)
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.add(root)
+
+        # header ──────────────────────────────────────────────────
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
+        header.get_style_context().add_class("header")
+        header.set_margin_top(24); header.set_margin_bottom(24)
+        header.set_margin_start(36); header.set_margin_end(36)
+        root.pack_start(header, False, False, 0)
+
+        # Detectar OS y cargar ícono via IconTheme con Papirus
+        os_id = run("grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '\"'").lower()
+        icon_theme = Gtk.IconTheme.get_default()
+        icon_theme.append_search_path("/usr/share/icons/Papirus")
+        # Algunos IDs no coinciden exactamente con el nombre del ícono en Papirus
+        icon_id_map = {"arch": "archlinux", "opensuse-leap": "opensuse", "opensuse-tumbleweed": "opensuse"}
+        icon_id = icon_id_map.get(os_id, os_id)
+        icon_name = f"distributor-logo-{icon_id}"
+        fallback = "preferences-system"
+        name = icon_name if icon_theme.has_icon(icon_name) else fallback
+        logo_widget = Gtk.Image.new_from_icon_name(name, Gtk.IconSize.INVALID)
+        logo_widget.set_pixel_size(56)
+        logo_box = Gtk.EventBox()
+        logo_box.get_style_context().add_class("logo-bg")
+        logo_box.add(logo_widget)
+        header.pack_start(logo_box, False, False, 0)
+
+        hbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        header.pack_start(hbox, True, True, 0)
+
+        os_name = run("grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2 | tr -d '\"'")
+        t = Gtk.Label(label=f"{os_name}  ·  vsFetch 1.0")
+        t.get_style_context().add_class("distro")
+        t.set_halign(Gtk.Align.START)
+        hbox.pack_start(t, False, False, 0)
+
+        s = Gtk.Label(label=run("date '+%Y-%m-%d  %H:%M:%S  %Z'") + "  ·  " + os.environ.get("LANG",""))
+        s.get_style_context().add_class("fetched")
+        s.set_halign(Gtk.Align.START)
+        hbox.pack_start(s, False, False, 0)
+
+        root.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 0)
+
+        # body ────────────────────────────────────────────────────
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        outer.set_margin_top(12); outer.set_margin_bottom(20)
+        root.pack_start(outer, True, True, 0)
+
+        # inner container de ancho fijo, centrado
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        body.set_size_request(580, -1)
+        body.set_halign(Gtk.Align.CENTER)
+        outer.pack_start(body, True, True, 0)
+
+        def add_section(title, rows):
+            lbl = Gtk.Label(label=f"── {title} ──")
+            lbl.get_style_context().add_class("section")
+            lbl.set_halign(Gtk.Align.CENTER)
+            lbl.set_margin_top(16); lbl.set_margin_bottom(6)
+            body.pack_start(lbl, False, False, 0)
+
+            grid = Gtk.Grid()
+            grid.set_row_spacing(6)
+            grid.set_column_spacing(16)
+            grid.set_halign(Gtk.Align.START)
+            body.pack_start(grid, False, False, 0)
+
+            for i, row in enumerate(rows):
+                # row = (icon, key, value)  or  (icon, key, value, pct_str, extra)
+                icon, key, value = row[0], row[1], row[2]
+                pct   = row[3] if len(row) > 3 else None
+                extra = row[4] if len(row) > 4 else None
+
+                ic_lbl = Gtk.Label(label=icon + " ")
+                ic_lbl.get_style_context().add_class("icon")
+                ic_lbl.set_halign(Gtk.Align.END)
+                grid.attach(ic_lbl, 0, i, 1, 1)
+
+                k_lbl = Gtk.Label(label=key)
+                k_lbl.get_style_context().add_class("key")
+                k_lbl.set_halign(Gtk.Align.START)
+                k_lbl.set_size_request(90, -1)
+                grid.attach(k_lbl, 1, i, 1, 1)
+
+                val_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+                grid.attach(val_box, 2, i, 1, 1)
+
+                v_lbl = Gtk.Label(label=value)
+                v_lbl.get_style_context().add_class("val")
+                v_lbl.set_halign(Gtk.Align.START)
+                v_lbl.set_selectable(True)
+                val_box.pack_start(v_lbl, False, False, 0)
+
+                if pct:
+                    p_lbl = Gtk.Label(label=f"({pct})")
+                    p_lbl.get_style_context().add_class(pct_class(pct))
+                    val_box.pack_start(p_lbl, False, False, 0)
+
+                if extra:
+                    e_lbl = Gtk.Label(label=extra)
+                    e_lbl.get_style_context().add_class("fetched")
+                    e_lbl.set_halign(Gtk.Align.START)
+                    val_box.pack_start(e_lbl, False, False, 0)
+
+        add_section("Hardware", hardware_info())
+        if not MINI:
+            add_section("Desktop",     desktop_info())
+            add_section("Terminal",    terminal_info())
+            add_section("Development", dev_info())
+            add_section("Uptime",      uptime_info())
+
+        self.connect("destroy", Gtk.main_quit)
+
+
+class AboutVersion(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="About vsFetch")
+        self.set_default_size(420, 0)
+        self.set_resizable(False)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_wmclass("arch-about", "arch-about")
+        self.set_border_width(0)
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS + b"""
+.ver-box    { background-color: #13131c; }
+.ver-name   { color: #cdd6f4; font-size: 22px; font-weight: bold; }
+.ver-sub    { color: #6c7086; font-size: 12px; }
+.ver-desc   { color: #a6adc8; font-size: 13px; }
+.ver-author { color: #89b4fa; font-size: 13px; font-weight: bold; }
+.link-btn         { border: none; border-radius: 8px; padding: 8px 18px; font-size: 12px; color: #ffffff; }
+.link-btn-github  { background-color: #238636; }
+.link-btn-github:hover { background-color: #2ea043; }
+.link-btn-web     { background-color: #1d6fa5; }
+.link-btn-web:hover    { background-color: #2484c1; }
+""")
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        root.get_style_context().add_class("ver-box")
+        self.add(root)
+
+        # ── avatar + nombre ──────────────────────────────────────
+        top = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        top.set_margin_top(36); top.set_margin_bottom(24)
+        top.set_margin_start(40); top.set_margin_end(40)
+        top.set_halign(Gtk.Align.CENTER)
+        root.pack_start(top, False, False, 0)
+
+        # icono de app (logo Arch) ────────────────────────────────
+        icon_theme = Gtk.IconTheme.get_default()
+        icon_theme.append_search_path("/usr/share/icons/Papirus")
+        app_img = Gtk.Image.new_from_icon_name("distributor-logo-archlinux", Gtk.IconSize.INVALID)
+        app_img.set_pixel_size(80)
+        top.pack_start(app_img, False, False, 0)
+
+        name_lbl = Gtk.Label(label="vsFetch")
+        name_lbl.get_style_context().add_class("ver-name")
+        top.pack_start(name_lbl, False, False, 0)
+
+        ver_lbl = Gtk.Label(label="Version 1.0")
+        ver_lbl.get_style_context().add_class("ver-sub")
+        top.pack_start(ver_lbl, False, False, 0)
+
+        desc_lbl = Gtk.Label(label="System info viewer for Arch / Hyprland")
+        desc_lbl.get_style_context().add_class("ver-desc")
+        top.pack_start(desc_lbl, False, False, 0)
+
+        root.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 0)
+
+        # ── autor ────────────────────────────────────────────────
+        author_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        author_box.set_halign(Gtk.Align.CENTER)
+        author_box.set_margin_top(20); author_box.set_margin_bottom(20)
+        root.pack_start(author_box, False, False, 0)
+
+        user_img = Gtk.Image.new_from_icon_name("system-users", Gtk.IconSize.INVALID)
+        user_img.set_pixel_size(32)
+        author_box.pack_start(user_img, False, False, 0)
+
+        author_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        author_box.pack_start(author_vbox, False, False, 0)
+
+        author_lbl = Gtk.Label(label="Víctor Sosa")
+        author_lbl.get_style_context().add_class("ver-author")
+        author_lbl.set_halign(Gtk.Align.START)
+        author_vbox.pack_start(author_lbl, False, False, 0)
+
+        role_lbl = Gtk.Label(label="Developer")
+        role_lbl.get_style_context().add_class("ver-sub")
+        role_lbl.set_halign(Gtk.Align.START)
+        author_vbox.pack_start(role_lbl, False, False, 0)
+
+        root.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 0)
+
+        # ── botones de enlaces ───────────────────────────────────
+        btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        btn_box.set_halign(Gtk.Align.CENTER)
+        btn_box.set_margin_top(20); btn_box.set_margin_bottom(28)
+        root.pack_start(btn_box, False, False, 0)
+
+        def open_url(_, url):
+            subprocess.Popen(["xdg-open", url])
+
+        github_btn = Gtk.Button()
+        gh_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        gh_icon = Gtk.Image.new_from_icon_name("system-software-install", Gtk.IconSize.MENU)
+        gh_lbl  = Gtk.Label(label="GitHub")
+        gh_box.pack_start(gh_icon, False, False, 0)
+        gh_box.pack_start(gh_lbl,  False, False, 0)
+        github_btn.add(gh_box)
+        github_btn.get_style_context().add_class("link-btn")
+        github_btn.get_style_context().add_class("link-btn-github")
+        github_btn.connect("clicked", open_url, "https://github.com/victorsosaMx/vsFetch")
+        btn_box.pack_start(github_btn, False, False, 0)
+
+        web_btn = Gtk.Button()
+        web_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        web_icon = Gtk.Image.new_from_icon_name("applications-internet", Gtk.IconSize.MENU)
+        web_lbl  = Gtk.Label(label="victorsosa.com")
+        web_box.pack_start(web_icon, False, False, 0)
+        web_box.pack_start(web_lbl,  False, False, 0)
+        web_btn.add(web_box)
+        web_btn.get_style_context().add_class("link-btn")
+        web_btn.get_style_context().add_class("link-btn-web")
+        web_btn.connect("clicked", open_url, "https://victorsosa.com/")
+        btn_box.pack_start(web_btn, False, False, 0)
+
+        self.connect("destroy", Gtk.main_quit)
+
+
+if VERSION:
+    win = AboutVersion()
+else:
+    win = AboutSystem()
+win.show_all()
+Gtk.main()
