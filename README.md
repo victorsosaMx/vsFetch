@@ -95,11 +95,94 @@ Add to your `~/.config/hypr/modules/rules.conf`:
 ```
 windowrule {
     name = vsfetch
-    match:class = arch-about
+    match:class = vsfetch
     float = yes
     size = 700 700
     center = yes
 }
+```
+
+---
+
+## Configuration
+
+vsFetch reads `~/.config/vsfetch/config.json` on startup. If the file doesn't exist, built-in defaults (Catppuccin Mocha) are used. **Partial configs are supported** — only the keys you specify override the defaults.
+
+```bash
+mkdir -p ~/.config/vsfetch
+cp /usr/share/doc/vsfetch-git/config.json.example ~/.config/vsfetch/config.json
+```
+
+### Reference
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `font` | string | `"JetBrainsMono Nerd Font"` | UI font family |
+| `default_mode` | string | `"full"` | Startup mode: `"full"`, `"mini"`, `"version"`. CLI flags override this. |
+| `chassis` | string | `""` | Override chassis label. Empty = auto-detect from DMI. |
+
+#### `palette`
+
+| Key | Default | Used in |
+|-----|---------|---------|
+| `bg` | `#13131c` | Window background |
+| `bg_header` | `#181825` | Header background |
+| `border` | `#313244` | Separators |
+| `text` | `#cdd6f4` | Primary text, values |
+| `text_dim` | `#6c7086` | Secondary text, timestamps |
+| `text_mid` | `#a6adc8` | Tertiary text |
+| `accent` | `#89b4fa` | Section titles, icons, keys |
+| `ok` | `#a6e3a1` | Usage < 50% |
+| `mid` | `#f9e2af` | Usage 50–79% |
+| `hi` | `#f38ba8` | Usage ≥ 80% |
+| `btn_github` | `#238636` | GitHub button |
+| `btn_github_hover` | `#2ea043` | GitHub button hover |
+| `btn_web` | `#1d6fa5` | Web button |
+| `btn_web_hover` | `#2484c1` | Web button hover |
+
+#### `font_sizes`
+
+| Key | Default | Used in |
+|-----|---------|---------|
+| `title` | `20` | OS name in header |
+| `body` | `13` | Keys, values, icons |
+| `small` | `11` | Section labels, timestamps |
+
+#### `logo`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `size` | `56` | Logo pixel size in header |
+| `override` | `""` | File path (`~/logo.png`) or icon theme name. Empty = auto-detect by OS. |
+
+#### `window`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `width` | `700` | Window width |
+| `height_mini` | `380` | Height in mini mode |
+| `height_full` | `680` | Height in full mode |
+
+#### `sections`
+
+Controls which sections are visible and their order in full mode. Mini mode always shows Hardware only.
+
+```json
+"sections": ["hardware", "desktop", "terminal", "development", "uptime"]
+```
+
+Available values: `hardware`, `desktop`, `terminal`, `development`, `uptime`
+
+#### `dev_tools`
+
+List of tools shown in the Development section. Each entry runs a shell command — if it returns empty the tool is hidden.
+
+```json
+"dev_tools": [
+  { "icon": "󱘗", "name": "Rust",   "cmd": "rustc --version 2>/dev/null | awk '{print $2}'" },
+  { "icon": "󰊢", "name": "Git",    "cmd": "git --version 2>/dev/null | awk '{print $3}'" },
+  { "icon": "󰌠", "name": "Python", "cmd": "python3 --version 2>/dev/null | awk '{print $2}'" }
+]
 ```
 
 ---

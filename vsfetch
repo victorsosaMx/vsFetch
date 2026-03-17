@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GdkPixbuf, Gdk
-import subprocess, os, sys
+from gi.repository import Gtk, GdkPixbuf, Gdk, GLib
+import json, subprocess, os, sys
 
-MINI    = "--mini"    in sys.argv
-VERSION = "--version" in sys.argv
+_CLI_MINI    = "--mini"    in sys.argv
+_CLI_VERSION = "--version" in sys.argv
 
 def run(cmd):
     try:
@@ -13,22 +13,130 @@ def run(cmd):
     except:
         return "N/A"
 
-CSS = b"""
-* { font-family: "JetBrainsMono Nerd Font", "FiraCode Nerd Font", monospace; }
-window { background-color: #13131c; }
-.header { background-color: #181825; border-bottom: 1px solid #313244; }
-.logo-bg { background-color: #313244; border-radius: 12px; padding: 6px; }
-.distro  { color: #cdd6f4; font-size: 20px; font-weight: bold; }
-.fetched { color: #6c7086; font-size: 11px; }
-.section { color: #89b4fa; font-size: 11px; font-weight: bold; }
-.icon    { color: #89b4fa; font-size: 13px; }
-.key     { color: #89b4fa; font-size: 13px; }
-.val     { color: #cdd6f4; font-size: 13px; }
-.pct-ok  { color: #a6e3a1; font-size: 13px; }
-.pct-mid { color: #f9e2af; font-size: 13px; }
-.pct-hi  { color: #f38ba8; font-size: 13px; }
-separator { background-color: #313244; margin-top: 2px; margin-bottom: 2px; }
-"""
+# ── config ────────────────────────────────────────────────────────────────────
+
+CONFIG_PATH = os.path.expanduser("~/.config/vsfetch/config.json")
+
+DEFAULTS = {
+    "palette": {
+        "bg":               "#13131c",
+        "bg_header":        "#181825",
+        "border":           "#313244",
+        "text":             "#cdd6f4",
+        "text_dim":         "#6c7086",
+        "text_mid":         "#a6adc8",
+        "accent":           "#89b4fa",
+        "ok":               "#a6e3a1",
+        "mid":              "#f9e2af",
+        "hi":               "#f38ba8",
+        "btn_github":       "#238636",
+        "btn_github_hover": "#2ea043",
+        "btn_web":          "#1d6fa5",
+        "btn_web_hover":    "#2484c1"
+    },
+    "font": "JetBrainsMono Nerd Font",
+    "font_sizes": {
+        "title": 20,
+        "body":  13,
+        "small": 11
+    },
+    "default_mode": "full",
+    "sections": ["hardware", "desktop", "terminal", "development", "uptime"],
+    "chassis": "",
+    "dev_tools": [
+        { "icon": "󱘗", "name": "Rust",   "cmd": "rustc --version 2>/dev/null | awk '{print $2}'" },
+        { "icon": "󰙱", "name": "Clang",  "cmd": "clang --version 2>/dev/null | grep -oP 'version [0-9.]+' | awk '{print $2}'" },
+        { "icon": "󰎙", "name": "NodeJS", "cmd": "node --version 2>/dev/null" },
+        { "icon": "󰟓", "name": "Go",     "cmd": "go version 2>/dev/null | awk '{print $3}' | tr -d go" },
+        { "icon": "󰪳", "name": ".NET",   "cmd": "dotnet --version 2>/dev/null" },
+        { "icon": "󰨞", "name": "Editor", "cmd": "code --version 2>/dev/null | head -1" },
+        { "icon": "󰊢", "name": "Git",    "cmd": "git --version 2>/dev/null | awk '{print $3}'" }
+    ],
+    "logo": {
+        "size":     56,
+        "override": ""
+    },
+    "window": {
+        "width":       700,
+        "height_mini": 380,
+        "height_full": 680
+    }
+}
+
+def load_config():
+    cfg = json.loads(json.dumps(DEFAULTS))   # deep copy
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH) as f:
+                user = json.load(f)
+            # merge each sub-section
+            for section in ("palette", "window"):
+                if section in user:
+                    cfg[section].update(user[section])
+            if "font" in user:
+                cfg["font"] = user["font"]
+            if "default_mode" in user:
+                cfg["default_mode"] = user["default_mode"]
+            if "font_sizes" in user:
+                cfg["font_sizes"].update(user["font_sizes"])
+            if "logo" in user:
+                cfg["logo"].update(user["logo"])
+            if "sections" in user:
+                cfg["sections"] = user["sections"]
+            if "chassis" in user:
+                cfg["chassis"] = user["chassis"]
+            if "dev_tools" in user:
+                cfg["dev_tools"] = user["dev_tools"]
+        except Exception as e:
+            print(f"vsFetch: could not read config ({e}), using defaults", file=sys.stderr)
+    return cfg
+
+GLib.set_prgname("vsfetch")
+
+CFG = load_config()
+P   = CFG["palette"]
+W   = CFG["window"]
+
+# Mode priority: CLI flag > config default_mode > "full"
+if _CLI_MINI:
+    MINI, VERSION = True, False
+elif _CLI_VERSION:
+    MINI, VERSION = False, True
+else:
+    _mode = CFG["default_mode"].lower()
+    MINI    = _mode == "mini"
+    VERSION = _mode == "version"
+
+def build_css():
+    font = CFG["font"]
+    FS   = CFG["font_sizes"]
+    return f"""
+* {{ font-family: "{font}", monospace; }}
+window {{ background-color: {P['bg']}; }}
+.header {{ background-color: {P['bg_header']}; border-bottom: 1px solid {P['border']}; }}
+.distro  {{ color: {P['text']}; font-size: {FS['title']}px; font-weight: bold; }}
+.fetched {{ color: {P['text_dim']}; font-size: {FS['small']}px; }}
+.section {{ color: {P['accent']}; font-size: {FS['small']}px; font-weight: bold; }}
+.icon    {{ color: {P['accent']}; font-size: {FS['body']}px; }}
+.key     {{ color: {P['accent']}; font-size: {FS['body']}px; }}
+.val     {{ color: {P['text']}; font-size: {FS['body']}px; }}
+.pct-ok  {{ color: {P['ok']}; font-size: {FS['body']}px; }}
+.pct-mid {{ color: {P['mid']}; font-size: {FS['body']}px; }}
+.pct-hi  {{ color: {P['hi']}; font-size: {FS['body']}px; }}
+separator {{ background-color: {P['border']}; margin-top: 2px; margin-bottom: 2px; }}
+.ver-box    {{ background-color: {P['bg']}; }}
+.ver-name   {{ color: {P['text']}; font-size: {FS['title']}px; font-weight: bold; }}
+.ver-sub    {{ color: {P['text_dim']}; font-size: {FS['small']}px; }}
+.ver-desc   {{ color: {P['text_mid']}; font-size: 13px; }}
+.ver-author {{ color: {P['accent']}; font-size: 13px; font-weight: bold; }}
+.link-btn         {{ border: none; border-radius: 8px; padding: 8px 18px; font-size: 12px; color: #ffffff; }}
+.link-btn-github  {{ background-color: {P['btn_github']}; }}
+.link-btn-github:hover {{ background-color: {P['btn_github_hover']}; }}
+.link-btn-web     {{ background-color: {P['btn_web']}; }}
+.link-btn-web:hover    {{ background-color: {P['btn_web_hover']}; }}
+""".encode()
+
+CSS = build_css()
 
 def pct_class(pct_str):
     try:
@@ -50,7 +158,25 @@ def sys_info():
 
 def hardware_info():
     rows = []
-    rows.append(("󰍹", "Chassis", "Desktop"))
+    _chassis_map = {
+        "1": "Other",      "2": "Unknown",    "3": "Desktop",
+        "4": "Desktop",    "5": "Desktop",    "6": "Tower",
+        "7": "Tower",      "8": "Portable",   "9": "Laptop",
+        "10": "Notebook",  "11": "Handheld",  "13": "All-in-One",
+        "14": "Notebook",  "17": "Server",    "23": "Server",
+        "28": "Blade",     "30": "Tablet",    "31": "Convertible",
+        "32": "Detachable","35": "Mini PC",   "36": "Stick PC",
+    }
+    if CFG["chassis"]:
+        chassis = CFG["chassis"]
+    else:
+        try:
+            with open("/sys/class/dmi/id/chassis_type") as _f:
+                _ct = _f.read().strip()
+            chassis = _chassis_map.get(_ct, f"Unknown ({_ct})")
+        except Exception:
+            chassis = "Unknown"
+    rows.append(("󰍹", "Chassis", chassis))
 
     ram_total = run("free -h | awk '/^Mem:/{print $2}'")
     ram_used  = run("free -h | awk '/^Mem:/{print $3}'")
@@ -69,7 +195,7 @@ def hardware_info():
     freq  = run("grep 'cpu MHz' /proc/cpuinfo | awk '{s+=$4;n++} END{printf \"%.2f GHz\", s/n/1000}'")
     rows.append(("󰍛", "CPU", f"{cpu} ({cores}) @ {freq}"))
 
-    gpu = run("lspci | grep -i 'VGA compatible controller' | head -1 | sed 's/.*: //;s/ (rev.*//' | sed 's/Advanced Micro Devices, Inc. \[AMD.ATI\] //'")
+    gpu = run("lspci | grep -i 'VGA compatible controller' | head -1 | sed 's/.*: //;s/ (rev.*//' | sed 's/Advanced Micro Devices, Inc. \\[AMD.ATI\\] //'")
     rows.append(("󰍹", "GPU", f"{gpu} [Discrete]"))
 
     disks = run("df -h --output=source,size,used,pcent,target -x tmpfs -x devtmpfs -x efivarfs | tail -n +2")
@@ -87,7 +213,6 @@ def desktop_info():
 
     # Active monitors only via JSON
     try:
-        import json
         raw = subprocess.check_output("hyprctl monitors -j", shell=True, stderr=subprocess.DEVNULL).decode()
         monitors = json.loads(raw)
         displays = "  ".join(f"{m['name']}: {m['width']}x{m['height']}@{round(m['refreshRate'])}Hz" for m in monitors)
@@ -117,16 +242,12 @@ def terminal_info():
     ]
 
 def dev_info():
-    tools = [
-        ("󱘗", "Rust",      run("rustc --version 2>/dev/null | awk '{print $2}'")),
-        ("󰙱", "Clang",     run("clang --version 2>/dev/null | grep -oP 'version [0-9.]+' | awk '{print $2}'")),
-        ("󰎙", "NodeJS",    run("node --version 2>/dev/null")),
-        ("󰟓", "Go",        run("go version 2>/dev/null | awk '{print $3}' | tr -d go")),
-        ("󰪳", ".NET",      run("dotnet --version 2>/dev/null")),
-        ("󰨞", "Editor",    run("code --version 2>/dev/null | head -1")),
-        ("󰊢", "Git",       run("git --version 2>/dev/null | awk '{print $3}'")),
-    ]
-    return [(ic, k, v) for ic, k, v in tools if v and v not in ("N/A", "")]
+    results = []
+    for t in CFG["dev_tools"]:
+        v = run(t["cmd"])
+        if v and v not in ("N/A", ""):
+            results.append((t["icon"], t["name"], v))
+    return results
 
 def uptime_info():
     upt   = run("uptime -p | sed 's/up //'")
@@ -150,10 +271,10 @@ def uptime_info():
 class AboutSystem(Gtk.Window):
     def __init__(self):
         super().__init__(title="About This System")
-        self.set_default_size(700, 380 if MINI else 680)
+        self.set_default_size(W["width"], W["height_mini"] if MINI else W["height_full"])
         self.set_resizable(False)
         self.set_position(Gtk.WindowPosition.CENTER)
-        self.set_wmclass("arch-about", "arch-about")
+
         self.set_border_width(0)
 
         provider = Gtk.CssProvider()
@@ -173,28 +294,41 @@ class AboutSystem(Gtk.Window):
         header.set_margin_start(36); header.set_margin_end(36)
         root.pack_start(header, False, False, 0)
 
-        # Detectar OS y cargar ícono via IconTheme con Papirus
-        os_id = run("grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '\"'").lower()
+        # Cargar ícono: override (archivo/nombre) > auto-detección por OS
+        logo_size    = CFG["logo"]["size"]
+        logo_override = os.path.expanduser(CFG["logo"]["override"])
         icon_theme = Gtk.IconTheme.get_default()
         icon_theme.append_search_path("/usr/share/icons/Papirus")
-        # Algunos IDs no coinciden exactamente con el nombre del ícono en Papirus
-        icon_id_map = {"arch": "archlinux", "opensuse-leap": "opensuse", "opensuse-tumbleweed": "opensuse"}
-        icon_id = icon_id_map.get(os_id, os_id)
-        icon_name = f"distributor-logo-{icon_id}"
-        fallback = "preferences-system"
-        name = icon_name if icon_theme.has_icon(icon_name) else fallback
-        logo_widget = Gtk.Image.new_from_icon_name(name, Gtk.IconSize.INVALID)
-        logo_widget.set_pixel_size(56)
-        logo_box = Gtk.EventBox()
-        logo_box.get_style_context().add_class("logo-bg")
-        logo_box.add(logo_widget)
-        header.pack_start(logo_box, False, False, 0)
+
+        if logo_override and os.path.isfile(logo_override):
+            # path a archivo de imagen
+            logo_widget = Gtk.Image.new_from_pixbuf(
+                GdkPixbuf.Pixbuf.new_from_file_at_size(logo_override, logo_size, logo_size)
+            )
+        elif logo_override and icon_theme.has_icon(logo_override):
+            # nombre de icono del theme
+            logo_widget = Gtk.Image.new_from_icon_name(logo_override, Gtk.IconSize.INVALID)
+            logo_widget.set_pixel_size(logo_size)
+        else:
+            # auto-detección por OS
+            os_id = run("grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '\"'").lower()
+            icon_id_map = {"arch": "archlinux", "opensuse-leap": "opensuse", "opensuse-tumbleweed": "opensuse"}
+            icon_id   = icon_id_map.get(os_id, os_id)
+            icon_name = f"distributor-logo-{icon_id}"
+            name      = icon_name if icon_theme.has_icon(icon_name) else "preferences-system"
+            logo_widget = Gtk.Image.new_from_icon_name(name, Gtk.IconSize.INVALID)
+            logo_widget.set_pixel_size(logo_size)
+        logo_widget.set_margin_top(5); logo_widget.set_margin_bottom(5)
+        logo_widget.set_margin_start(5); logo_widget.set_margin_end(5)
+        header.pack_start(logo_widget, False, False, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        hbox.set_valign(Gtk.Align.CENTER)
+        hbox.set_margin_start(15)
         header.pack_start(hbox, True, True, 0)
 
         os_name = run("grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2 | tr -d '\"'")
-        t = Gtk.Label(label=f"{os_name}  ·  vsFetch 1.0")
+        t = Gtk.Label(label=f"{os_name}  ·  vsFetch 1.1")
         t.get_style_context().add_class("distro")
         t.set_halign(Gtk.Align.START)
         hbox.pack_start(t, False, False, 0)
@@ -267,12 +401,21 @@ class AboutSystem(Gtk.Window):
                     e_lbl.set_halign(Gtk.Align.START)
                     val_box.pack_start(e_lbl, False, False, 0)
 
-        add_section("Hardware", hardware_info())
-        if not MINI:
-            add_section("Desktop",     desktop_info())
-            add_section("Terminal",    terminal_info())
-            add_section("Development", dev_info())
-            add_section("Uptime",      uptime_info())
+        _section_map = {
+            "hardware":    ("Hardware",    hardware_info),
+            "desktop":     ("Desktop",     desktop_info),
+            "terminal":    ("Terminal",    terminal_info),
+            "development": ("Development", dev_info),
+            "uptime":      ("Uptime",      uptime_info),
+        }
+
+        if MINI:
+            add_section("Hardware", hardware_info())
+        else:
+            for key in CFG["sections"]:
+                if key in _section_map:
+                    title, fn = _section_map[key]
+                    add_section(title, fn())
 
         self.connect("destroy", Gtk.main_quit)
 
@@ -283,22 +426,11 @@ class AboutVersion(Gtk.Window):
         self.set_default_size(420, 0)
         self.set_resizable(False)
         self.set_position(Gtk.WindowPosition.CENTER)
-        self.set_wmclass("arch-about", "arch-about")
+
         self.set_border_width(0)
 
         provider = Gtk.CssProvider()
-        provider.load_from_data(CSS + b"""
-.ver-box    { background-color: #13131c; }
-.ver-name   { color: #cdd6f4; font-size: 22px; font-weight: bold; }
-.ver-sub    { color: #6c7086; font-size: 12px; }
-.ver-desc   { color: #a6adc8; font-size: 13px; }
-.ver-author { color: #89b4fa; font-size: 13px; font-weight: bold; }
-.link-btn         { border: none; border-radius: 8px; padding: 8px 18px; font-size: 12px; color: #ffffff; }
-.link-btn-github  { background-color: #238636; }
-.link-btn-github:hover { background-color: #2ea043; }
-.link-btn-web     { background-color: #1d6fa5; }
-.link-btn-web:hover    { background-color: #2484c1; }
-""")
+        provider.load_from_data(CSS)
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
@@ -326,7 +458,7 @@ class AboutVersion(Gtk.Window):
         name_lbl.get_style_context().add_class("ver-name")
         top.pack_start(name_lbl, False, False, 0)
 
-        ver_lbl = Gtk.Label(label="Version 1.0")
+        ver_lbl = Gtk.Label(label="Version 1.1")
         ver_lbl.get_style_context().add_class("ver-sub")
         top.pack_start(ver_lbl, False, False, 0)
 
