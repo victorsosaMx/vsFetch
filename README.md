@@ -7,6 +7,8 @@ Think of it as an "About This Computer" panel for your desktop, with live backgr
 [![AUR version](https://img.shields.io/aur/version/vsfetch?label=AUR&logo=archlinux)](https://aur.archlinux.org/packages/vsfetch)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> **New: graphical settings editor** — [vsFetch Settings](https://github.com/victorsosaMx/vsFetch-Settings) lets you configure every option visually, preview live, and export themes — no JSON editing needed.
+
 ![vsFetch themes](screenshots/20_1.png)
 ![vsFetch themes](screenshots/20_2.png)
 ![vsFetch themes](screenshots/20_3.png)
@@ -113,6 +115,8 @@ windowrule {
 ---
 
 ## Configuration
+
+> Prefer a GUI? **[vsFetch Settings](https://github.com/victorsosaMx/vsFetch-Settings)** is a graphical editor that covers all options below — install it with `yay -S vsfetch-settings`.
 
 vsFetch reads `~/.config/vsfetch/config.json` on startup. If the file doesn't exist, built-in defaults (Catppuccin Mocha) are used. **Partial configs are supported** — only the keys you specify override the defaults.
 
