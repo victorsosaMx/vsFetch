@@ -77,6 +77,12 @@ sudo dnf install python3-gobject python3-cairo gtk3 papirus-icon-theme
 
 ### Arch Linux — AUR
 
+Stable release:
+```bash
+yay -S vsfetch
+```
+
+Development version (latest commit):
 ```bash
 yay -S vsfetch-git
 ```
