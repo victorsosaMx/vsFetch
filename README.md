@@ -3,10 +3,16 @@
 A graphical system info viewer for Linux — inspired by `fastfetch`, built with Python + GTK3.
 Think of it as an "About This Computer" panel for your desktop, with live background animations.
 
-[![AUR version](https://img.shields.io/aur/version/vsfetch-git?label=AUR&logo=archlinux)](https://aur.archlinux.org/packages/vsfetch-git)
+[![AUR version](https://img.shields.io/aur/version/vsfetch-git?label=AUR%20git&logo=archlinux)](https://aur.archlinux.org/packages/vsfetch-git)
+[![AUR version](https://img.shields.io/aur/version/vsfetch?label=AUR&logo=archlinux)](https://aur.archlinux.org/packages/vsfetch)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![vsFetch screenshot](screenshots/1_1.png)
+![vsFetch themes](screenshots/20_1.png)
+![vsFetch themes](screenshots/20_2.png)
+![vsFetch themes](screenshots/20_3.png)
+![vsFetch themes](screenshots/20_4.png)
+![vsFetch themes](screenshots/20_5.png)
+![vsFetch themes](screenshots/20_6.png)
 
 ---
 
