@@ -1,5 +1,54 @@
 # Changelog
 
+## [2.0] - 2026-03-18
+
+### Added
+- **`--config <path>` CLI flag** — load any config file directly; `extends` is ignored in this mode
+- **`extends` key in config** — point to a theme file that wins over your personal config
+  - Load order: `DEFAULTS` → `config.json` → `extends file` (extended file has highest priority)
+  - One level only — `extends` inside an extended file is ignored
+  - Designed for theme switching: keep personal settings in `config.json`, swap themes via `extends`
+- **Layout system** — `layout: "top"` (classic) or `layout: "left"` (vertical sidebar)
+  - Sidebar shows OS name and date rotated 90°, logo at top or bottom (`logo.sidebar_position`)
+  - Sidebar hides locale string for a cleaner look
+- **Animation system** — live background animations rendered via Cairo
+  - `rain` — diagonal streaks falling at 15°, configurable color, speed, drop count
+  - `snow` — circular flakes with sinusoidal horizontal drift
+  - `matrix` — falling half-width katakana columns with bright head and fading trail
+  - `aurora` — undulating sine bands using accent, hi, and ok palette colors
+  - `warp` — stars radiating from center, accelerating outward (starfield effect)
+  - `scope` param: `"body"` (below header only) or `"full"` (entire window)
+- **Gradient bar** — animated 2-color scrolling bar replacing the header separator
+  - Horizontal in top layout, vertical in left layout
+  - Configurable colors, disabled by default
+- **Background image overlay** — any image rendered at bottom-right corner
+  - Scales source image to configured size
+  - Adjustable opacity, rendered above content but behind nothing (Overlay stack)
+  - `bg_image.enabled` flag — set to `false` to disable completely (no image, no distro logo fallback)
+- **Theme files** — ready-made themes in `themes/` folder (21 included)
+  - Each file is fully self-contained: all config keys explicitly defined, no ambiguity
+  - Use with `--config` for direct testing or point `extends` to activate
+- Added `python-cairo` as explicit dependency
+
+### Changed
+- Window now uses `Gtk.Overlay` stack: base content → animation → background image
+- Body content uses its own `Gtk.Overlay` to allow scoped animations
+- `DEFAULTS` in script is now the single source of truth for all config keys
+
+### Multi-distro improvements
+- **Session** — reads `XDG_CURRENT_DESKTOP`, `XDG_SESSION_DESKTOP`, `DESKTOP_SESSION` with session type; no longer Hyprland-only
+- **Display** — cascade: `hyprctl` → `xrandr` → `wlr-randr` → `$DISPLAY`/`$WAYLAND_DISPLAY`
+- **GPU** — removed hardcoded `[Discrete]` label; detects 3D controller as fallback
+- **Shell** — reads `$SHELL` from environment instead of assuming fish
+- **Terminal** — detects kitty, alacritty, wezterm, foot, xfce4-terminal, konsole, gnome-terminal, tilix; falls back to `$TERM_PROGRAM` / `$TERM`
+- **Term Font** — reads kitty, alacritty (toml/yml), foot, wezterm configs
+- **Packages** — detects pacman, dpkg, rpm, apk, flatpak, snap
+- **OS Age** — reads pacman, dpkg, dnf, zypper, yum logs in order
+- **Login** — uses `$USER`/`$LOGNAME` + `tty`; GUI sessions show `user@localhost`
+- **bg_image** — falls back to distro logo from Papirus when no path is set
+
+---
+
 ## [1.1] - 2026-03-17
 
 ### Added

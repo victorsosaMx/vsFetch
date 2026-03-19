@@ -1,4 +1,5 @@
 {
+  "extends": "",
   "palette": {
     "bg":               "#13131c",
     "bg_header":        "#181825",
@@ -23,7 +24,8 @@
   },
   "logo": {
     "size":     56,
-    "override": ""
+    "override": "",
+    "sidebar_position": "bottom"
   },
   "default_mode": "full",
   "sections": ["hardware", "desktop", "terminal", "development", "uptime"],
@@ -41,5 +43,26 @@
     "width":       700,
     "height_mini": 380,
     "height_full": 680
+  },
+  "gradient_bar": {
+    "enabled": false,
+    "color_a": "#89b4fa",
+    "color_b": "#f38ba8"
+  },
+  "layout": "top",
+  "bg_image": {
+    "enabled": true,
+    "path":    "",
+    "size":    200,
+    "opacity": 0.15
+  },
+  "animation": {
+    "enabled": false,
+    "type":    "rain",
+    "scope":   "body",
+    "color":   "",
+    "opacity": 0.25,
+    "speed":   1.0,
+    "drops":   80
   }
 }

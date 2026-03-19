@@ -1,0 +1,101 @@
+{
+  "palette": {
+    "bg": "#f4f8fb",
+    "bg_header": "#e9f1f7",
+    "border": "#c9d7e3",
+    "text": "#1b2a38",
+    "text_dim": "#6b8194",
+    "text_mid": "#3a556a",
+    "accent": "#1793d1",
+    "ok": "#4caf50",
+    "mid": "#64b5f6",
+    "hi": "#1e88e5",
+    "btn_github": "#0969da",
+    "btn_github_hover": "#1f6feb",
+    "btn_web": "#1e88e5",
+    "btn_web_hover": "#42a5f5"
+  },
+  "font": "JetBrainsMono Nerd Font",
+  "font_sizes": {
+    "title": 20,
+    "body": 13,
+    "small": 11
+  },
+  "logo": {
+    "size": 56,
+    "override": "",
+    "sidebar_position": "bottom"
+  },
+  "default_mode": "full",
+  "sections": [
+    "hardware",
+    "desktop",
+    "terminal",
+    "development",
+    "uptime"
+  ],
+  "chassis": "",
+  "dev_tools": [
+    {
+      "icon": "󱘗",
+      "name": "Rust",
+      "cmd": "rustc --version 2>/dev/null | awk '{print $2}'"
+    },
+    {
+      "icon": "󰙱",
+      "name": "Clang",
+      "cmd": "clang --version 2>/dev/null | grep -oP 'version [0-9.]+' | awk '{print $2}'"
+    },
+    {
+      "icon": "󰎙",
+      "name": "NodeJS",
+      "cmd": "node --version 2>/dev/null"
+    },
+    {
+      "icon": "󰟓",
+      "name": "Go",
+      "cmd": "go version 2>/dev/null | awk '{print $3}' | tr -d go"
+    },
+    {
+      "icon": "󰪳",
+      "name": ".NET",
+      "cmd": "dotnet --version 2>/dev/null"
+    },
+    {
+      "icon": "󰨞",
+      "name": "Editor",
+      "cmd": "code --version 2>/dev/null | head -1"
+    },
+    {
+      "icon": "󰊢",
+      "name": "Git",
+      "cmd": "git --version 2>/dev/null | awk '{print $3}'"
+    }
+  ],
+  "window": {
+    "width": 700,
+    "height_mini": 380,
+    "height_full": 680
+  },
+  "gradient_bar": {
+    "enabled": true,
+    "color_a": "#1793d1",
+    "color_b": "#1e88e5"
+  },
+  "layout": "top",
+  "bg_image": {
+    "path": "",
+    "size": 300,
+    "opacity": 0.75,
+    "enabled": true
+  },
+  "animation": {
+    "enabled": true,
+    "type": "aurora",
+    "scope": "body",
+    "color": "",
+    "opacity": 0.15,
+    "speed": 0.6,
+    "drops": 80
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "palette": {
+    "bg": "#0b0b12",
+    "bg_header": "#15151f",
+    "border": "#2b2b3a",
+    "text": "#e0e0e0",
+    "text_dim": "#8b8b9c",
+    "text_mid": "#b0b0c1",
+    "accent": "#9c27b0",
+    "ok": "#4caf50",
+    "mid": "#ba68c8",
+    "hi": "#d500f9",
+    "btn_github": "#8e24aa",
+    "btn_github_hover": "#9c27b0",
+    "btn_web": "#7b1fa2",
+    "btn_web_hover": "#ab47bc"
+  },
+  "font": "JetBrainsMono Nerd Font",
+  "font_sizes": {
+    "title": 20,
+    "body": 13,
+    "small": 11
+  },
+  "logo": {
+    "size": 56,
+    "override": "",
+    "sidebar_position": "bottom"
+  },
+  "default_mode": "full",
+  "sections": [
+    "hardware",
+    "desktop",
+    "terminal",
+    "development",
+    "uptime"
+  ],
+  "chassis": "",
+  "dev_tools": [
+    {
+      "icon": "󱘗",
+      "name": "Rust",
+      "cmd": "rustc --version 2>/dev/null | awk '{print $2}'"
+    },
+    {
+      "icon": "󰙱",
+      "name": "Clang",
+      "cmd": "clang --version 2>/dev/null | grep -oP 'version [0-9.]+' | awk '{print $2}'"
+    },
+    {
+      "icon": "󰎙",
+      "name": "NodeJS",
+      "cmd": "node --version 2>/dev/null"
+    },
+    {
+      "icon": "󰟓",
+      "name": "Go",
+      "cmd": "go version 2>/dev/null | awk '{print $3}' | tr -d go"
+    },
+    {
+      "icon": "󰪳",
+      "name": ".NET",
+      "cmd": "dotnet --version 2>/dev/null"
+    },
+    {
+      "icon": "󰨞",
+      "name": "Editor",
+      "cmd": "code --version 2>/dev/null | head -1"
+    },
+    {
+      "icon": "󰊢",
+      "name": "Git",
+      "cmd": "git --version 2>/dev/null | awk '{print $3}'"
+    }
+  ],
+  "window": {
+    "width": 700,
+    "height_mini": 380,
+    "height_full": 680
+  },
+  "gradient_bar": {
+    "enabled": true,
+    "color_a": "#9c27b0",
+    "color_b": "#d500f9"
+  },
+  "layout": "left",
+  "bg_image": {
+    "path": "",
+    "size": 300,
+    "opacity": 0.75,
+    "enabled": true
+  },
+  "animation": {
+    "enabled": true,
+    "type": "matrix",
+    "scope": "body",
+    "color": "#9c27b0",
+    "opacity": 0.3,
+    "speed": 1.2,
+    "drops": 70
+  }
+}

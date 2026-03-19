@@ -1,0 +1,102 @@
+{
+  "palette": {
+    "bg": "#13131c",
+    "bg_header": "#181825",
+    "border": "#313244",
+    "text": "#cdd6f4",
+    "text_dim": "#6c7086",
+    "text_mid": "#a6adc8",
+    "accent": "#89b4fa",
+    "ok": "#a6e3a1",
+    "mid": "#f9e2af",
+    "hi": "#f38ba8",
+    "btn_github": "#238636",
+    "btn_github_hover": "#2ea043",
+    "btn_web": "#1d6fa5",
+    "btn_web_hover": "#2484c1"
+  },
+  "font": "JetBrainsMono Nerd Font",
+  "font_sizes": {
+    "title": 20,
+    "body": 13,
+    "small": 11
+  },
+  "logo": {
+    "size": 56,
+    "override": "",
+    "sidebar_position": "top"
+  },
+  "default_mode": "full",
+  "sections": [
+    "hardware",
+    "desktop",
+    "terminal",
+    "development",
+    "uptime"
+  ],
+  "chassis": "",
+  "dev_tools": [
+    {
+      "icon": "󱘗",
+      "name": "Rust",
+      "cmd": "rustc --version 2>/dev/null | awk '{print $2}'"
+    },
+    {
+      "icon": "󰙱",
+      "name": "Clang",
+      "cmd": "clang --version 2>/dev/null | grep -oP 'version [0-9.]+' | awk '{print $2}'"
+    },
+    {
+      "icon": "󰎙",
+      "name": "NodeJS",
+      "cmd": "node --version 2>/dev/null"
+    },
+    {
+      "icon": "󰟓",
+      "name": "Go",
+      "cmd": "go version 2>/dev/null | awk '{print $3}' | tr -d go"
+    },
+    {
+      "icon": "󰪳",
+      "name": ".NET",
+      "cmd": "dotnet --version 2>/dev/null"
+    },
+    {
+      "icon": "󰨞",
+      "name": "Editor",
+      "cmd": "code --version 2>/dev/null | head -1"
+    },
+    {
+      "icon": "󰊢",
+      "name": "Git",
+      "cmd": "git --version 2>/dev/null | awk '{print $3}'"
+    }
+  ],
+  "window": {
+    "width": 700,
+    "height_mini": 380,
+    "height_full": 680
+  },
+  "gradient_bar": {
+    "enabled": false,
+    "color_a": "#89b4fa",
+    "color_b": "#f38ba8"
+  },
+  "layout": "left",
+  "bg_image": {
+    "path": "",
+    "size": 300,
+    "opacity": 0.75,
+    "enabled": true
+  },
+  "animation": {
+    "enabled": true,
+    "type": "rain",
+    "scope": "full",
+    "color": "",
+    "opacity": 0.25,
+    "speed": 1.0,
+    "drops": 80
+  },
+  "extends": "/home/vhs/.config/vsfetch/config_Mario_Dark.json"
+}
