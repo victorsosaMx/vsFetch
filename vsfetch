@@ -8,8 +8,8 @@ import json, subprocess, os, sys, random, math
 _K  = 42
 _D  = lambda e: ''.join(chr(c ^ _K) for c in e)
 _APP      = _D([92,89,108,79,94,73,66])                      # vsFetch
-_APP_VER  = _D([92,89,108,79,94,73,66,10,24,4,26])           # vsFetch 2.0
-_VER_LBL  = _D([124,79,88,89,67,69,68,10,24,4,26])           # Version 2.0
+_APP_VER  = _D([92,89,108,79,94,73,66,10,24,4,26,4,24])       # vsFetch 2.0.2
+_VER_LBL  = _D([124,79,88,89,67,69,68,10,24,4,26,4,24])       # Version 2.0.2
 _APP_ABOUT= _D([107,72,69,95,94,10,92,89,108,79,94,73,66])   # About vsFetch
 _APP_PROC = _D([92,89,76,79,94,73,66])                       # vsfetch
 
@@ -429,10 +429,10 @@ class AboutSystem(Gtk.Window):
 
         total_rows = sum(len(rows) for _, rows in sections_data)
         num_sections = len(sections_data)
-        header_h = 120
-        row_h = 28
-        section_h = 40
-        padding = 40
+        header_h = 32 if CFG.get("layout", "top") == "left" else 115
+        row_h = 18
+        section_h = 20
+        padding = 20
         auto_h = header_h + num_sections * section_h + total_rows * row_h + padding
         cfg_h = W["height_mini"] if MINI else W["height_full"]
         display = Gdk.Display.get_default()

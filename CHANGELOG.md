@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.2] - 2026-03-29
+
+### Fixed
+- **Window height overcalculation in left layout** — auto-size formula applied the top header height (115px) even in `layout: "left"` mode where no top header exists; header contribution is now 32px (outer margins only) when sidebar layout is active, preventing the excess empty space at the bottom of the window
+
+---
+
+## [2.0.1] - 2026-03-29
+
+### Fixed
+- **Duplicate disk entries** — devices mounted at multiple points (e.g. btrfs subvolumes) no longer appear as separate rows; deduplication is based on the block device name
+- **Window height clipping** — replaced hardcoded height with dynamic calculation based on actual content (sections + rows); caps at 90% of monitor height using `Gdk.Display` instead of deprecated `Gdk.Screen`
+- **First label auto-highlighted on open** — GTK's automatic focus on the first selectable widget caused the first value (e.g. Uptime) to appear highlighted on launch; fixed with `set_can_focus(False)` after `set_selectable(True)`
+
+---
+
 ## [2.0] - 2026-03-18
 
 ### Added
