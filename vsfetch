@@ -248,9 +248,11 @@ def hardware_info():
     rows.append(("󰍹", "GPU", gpu or "N/A"))
 
     disks = run("df -h --output=source,size,used,pcent,target -x tmpfs -x devtmpfs -x efivarfs | tail -n +2")
+    seen_devs = set()
     for line in disks.splitlines():
         p = line.split()
-        if len(p) >= 5 and p[0].startswith('/dev/'):
+        if len(p) >= 5 and p[0].startswith('/dev/') and p[0] not in seen_devs:
+            seen_devs.add(p[0])
             fs = run(f"lsblk -no FSTYPE {p[0]} 2>/dev/null | head -1") or ""
             rows.append(("󰋊", "Disk", f"{p[2]} / {p[1]}", p[3], f"— {fs}"))
     return rows
@@ -385,7 +387,6 @@ def uptime_info():
 class AboutSystem(Gtk.Window):
     def __init__(self):
         super().__init__(title="About This System")
-        self.set_default_size(W["width"], W["height_mini"] if MINI else W["height_full"])
         self.set_resizable(False)
         self.set_position(Gtk.WindowPosition.CENTER)
 
@@ -393,8 +394,10 @@ class AboutSystem(Gtk.Window):
 
         provider = Gtk.CssProvider()
         provider.load_from_data(CSS)
+        display = Gdk.Display.get_default()
+        screen = display.get_default_screen() if display else Gdk.Screen.get_default()
         Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(), provider,
+            screen, provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
@@ -405,6 +408,44 @@ class AboutSystem(Gtk.Window):
         body_overlay = Gtk.Overlay()
         overlay.add(root)
         self.add(overlay)
+
+        # ── collect section data and auto-size window ─────────────
+        _section_map = {
+            "hardware":    ("Hardware",    hardware_info),
+            "desktop":     ("Desktop",     desktop_info),
+            "terminal":    ("Terminal",    terminal_info),
+            "development": ("Development", dev_info),
+            "uptime":      ("Uptime",      uptime_info),
+        }
+
+        if MINI:
+            sections_data = [("Hardware", hardware_info())]
+        else:
+            sections_data = []
+            for key in CFG["sections"]:
+                if key in _section_map:
+                    title, fn = _section_map[key]
+                    sections_data.append((title, fn()))
+
+        total_rows = sum(len(rows) for _, rows in sections_data)
+        num_sections = len(sections_data)
+        header_h = 120
+        row_h = 28
+        section_h = 40
+        padding = 40
+        auto_h = header_h + num_sections * section_h + total_rows * row_h + padding
+        cfg_h = W["height_mini"] if MINI else W["height_full"]
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() if display else None
+        if not monitor and display:
+            monitor = display.get_monitor(0)
+        max_h = int(monitor.get_geometry().height * 0.9) if monitor else None
+        final_h = min(max(cfg_h, auto_h), max_h) if max_h else max(cfg_h, auto_h)
+        self.set_default_size(W["width"], final_h)
+        if MINI:
+            W["height_mini"] = final_h
+        else:
+            W["height_full"] = final_h
 
         # ── animation ─────────────────────────────────────────────
         AN = CFG["animation"]
@@ -850,21 +891,8 @@ class AboutSystem(Gtk.Window):
                     e_lbl.set_halign(Gtk.Align.START)
                     val_box.pack_start(e_lbl, False, False, 0)
 
-        _section_map = {
-            "hardware":    ("Hardware",    hardware_info),
-            "desktop":     ("Desktop",     desktop_info),
-            "terminal":    ("Terminal",    terminal_info),
-            "development": ("Development", dev_info),
-            "uptime":      ("Uptime",      uptime_info),
-        }
-
-        if MINI:
-            add_section("Hardware", hardware_info())
-        else:
-            for key in CFG["sections"]:
-                if key in _section_map:
-                    title, fn = _section_map[key]
-                    add_section(title, fn())
+        for title, rows in sections_data:
+            add_section(title, rows)
 
         self.connect("destroy", Gtk.main_quit)
 
@@ -880,8 +908,10 @@ class AboutVersion(Gtk.Window):
 
         provider = Gtk.CssProvider()
         provider.load_from_data(CSS)
+        display = Gdk.Display.get_default()
+        screen = display.get_default_screen() if display else Gdk.Screen.get_default()
         Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(), provider,
+            screen, provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
