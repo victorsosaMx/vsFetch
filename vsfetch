@@ -837,6 +837,7 @@ class AboutSystem(Gtk.Window):
                 v_lbl.get_style_context().add_class("val")
                 v_lbl.set_halign(Gtk.Align.START)
                 v_lbl.set_selectable(True)
+                v_lbl.set_can_focus(False)
                 val_box.pack_start(v_lbl, False, False, 0)
 
                 if pct:
